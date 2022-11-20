@@ -1,9 +1,4 @@
-imbalanced_learn
-imblearn
-matplotlib
-numpy
-pandas
-requests
-scikit_learn
-streamlit
+numpy==1.21.6
+requests==2.23.0
+streamlit==1.10.0
 
