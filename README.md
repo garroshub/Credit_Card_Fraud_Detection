@@ -22,6 +22,4 @@ A synthetic dataset generated using the simulator called PaySim was used as the 
 
 # App Interface
 
-![image](https://user-images.githubusercontent.com/66699813/202878168-fbc7d3c8-e342-4bfb-af43-133da36262fa.png)
-![image](https://user-images.githubusercontent.com/66699813/202878175-bbc98071-2e8f-4319-a257-6304391ee431.png)
-![image](https://user-images.githubusercontent.com/66699813/202878191-8e567746-852f-4027-9b6a-e6ffbd2f45d9.png)
+![Home page](home_credit.gif)
