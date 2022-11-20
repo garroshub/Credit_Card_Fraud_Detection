@@ -11,7 +11,7 @@ st.write("""
 
 Credit card fraud is a form of identity theft that involves an unauthorized taking of another's credit card information for the purpose of charging purchases to the account or removing funds from it.
 
-Data Source: https://www.kaggle.com/datasets/ealaxi/paysim1?select=PS_20174392719_1491204439457_log.csv
+Data Source: https://www.kaggle.com/datasets/ealaxi/paysim1
 
 FastAPI: FastAPI is a Web framework for developing RESTful APIs in Python. 
 
@@ -19,8 +19,11 @@ FastAPI: FastAPI is a Web framework for developing RESTful APIs in Python.
 
 """)
 
-st.image("img_2.png")
+st.write("""
+## How FastAPI Works
+""")
 
+st.image("img_2.png")
 
 st.sidebar.header('Input Features of The Transaction')
 
