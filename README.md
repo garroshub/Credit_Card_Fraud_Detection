@@ -1,6 +1,6 @@
 ### Streamlit App (click the button below!)
 
-[![Streamlit App](https://fraud-detection.streamlit.app/)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://fraud-detection.streamlit.app/)
 
 # Credit_Card_Fraud_Detection
 
