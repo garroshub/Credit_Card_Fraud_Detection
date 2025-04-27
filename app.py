@@ -4,15 +4,26 @@ import pickle
 import numpy as np
 import pandas as pd
 import os.path
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve
-from sklearn.model_selection import train_test_split
 import io
+
+# Try importing visualization libraries with error handling for Streamlit Cloud
+try:
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve
+    from sklearn.model_selection import train_test_split
+    visualization_available = True
+except ImportError as e:
+    st.warning(f"Some visualization components could not be loaded: {e}")
+    visualization_available = False
 
 st.title("Credit Card Fraud Detection Web App")
 
-st.image("image.png")
+# Handle image loading with error handling
+try:
+    st.image("image.png")
+except FileNotFoundError:
+    st.write("Credit Card Fraud Detection System")
 
 st.write("""
 ## About
@@ -29,7 +40,15 @@ Data Source: https://www.kaggle.com/datasets/ealaxi/paysim1
 st.write("## Dataset Description")
 
 # Create tabs for dataset information
-dataset_tab1, dataset_tab2, dataset_tab3, dataset_tab4 = st.tabs(["Dataset Overview", "Variable Descriptions", "Data Engineering", "Handling Imbalanced Data"])
+try:
+    dataset_tab1, dataset_tab2, dataset_tab3, dataset_tab4 = st.tabs(["Dataset Overview", "Variable Descriptions", "Data Engineering", "Handling Imbalanced Data"])
+except Exception as e:
+    st.error(f"Error creating tabs: {e}")
+    # Fallback to sections if tabs fail
+    st.write("## Dataset Overview")
+    st.write("## Variable Descriptions")
+    st.write("## Data Engineering")
+    st.write("## Handling Imbalanced Data")
 
 # Tab 1: Dataset Overview
 with dataset_tab1:
@@ -341,9 +360,18 @@ with dataset_tab4:
 
 # Load and display feature importance
 if os.path.exists('credit_fraud_model.pkl'):
-    # Create feature importance chart
-    with open('credit_fraud_model.pkl', 'rb') as file:
-        model = pickle.load(file)
+    try:
+        # Create feature importance chart
+        with open('credit_fraud_model.pkl', 'rb') as file:
+            model = pickle.load(file)
+            
+        # Check if visualization libraries are available
+        if not 'visualization_available' in locals() or not visualization_available:
+            st.warning("Visualization components are not available. Some charts will not be displayed.")
+            visualization_available = False
+    except Exception as e:
+        st.error(f"Error loading model: {e}")
+        visualization_available = False
     
     # Try to load feature names from file, otherwise use default names
     if os.path.exists('model_features.pkl'):
@@ -355,7 +383,7 @@ if os.path.exists('credit_fraud_model.pkl'):
                     'step': 'Step (Time)',
                     'types': 'Transaction Type',
                     'amount': 'Amount',
-                    'oldbalanceorig': 'Original Balance',
+                    'oldbalanceorg': 'Original Balance',
                     'newbalanceorig': 'New Balance',
                     'oldbalancedest': 'Recipient Original Balance',
                     'newbalancedest': 'Recipient New Balance',
@@ -390,18 +418,41 @@ if os.path.exists('credit_fraud_model.pkl'):
             'Importance': model.feature_importances_
         }).sort_values('Importance', ascending=False)
         
-        # Create the plot
-        fig, ax = plt.subplots(figsize=(10, 6))
-        sns.barplot(x='Importance', y='Feature', data=importance_df, palette='viridis')
-        plt.title('Feature Importance in Fraud Detection', fontsize=16)
-        plt.xlabel('Importance Score', fontsize=14)
-        plt.ylabel('Feature', fontsize=14)
-        plt.tight_layout()
+        # Create a bar chart for feature importance if visualization is available
+        if visualization_available:
+            try:
+                # Check if feature names and importances match in length
+                if len(feature_names) != len(model.feature_importances_):
+                    # Truncate to the shorter length
+                    min_len = min(len(feature_names), len(model.feature_importances_))
+                    feature_names_trimmed = feature_names[:min_len]
+                    importances_trimmed = model.feature_importances_[:min_len]
+                    
+                    # Create DataFrame with trimmed data
+                    importance_df = pd.DataFrame({
+                        'Feature': feature_names_trimmed,
+                        'Importance': importances_trimmed
+                    }).sort_values('Importance', ascending=False)
+                
+                # Create the plot
+                fig1, ax1 = plt.subplots(figsize=(10, 6))
+                importance_df.sort_values('Importance', ascending=False).head(10).plot(kind='barh', x='Feature', y='Importance', ax=ax1)
+                ax1.set_title('Top 10 Most Important Features')
+                plt.tight_layout()
+                st.pyplot(fig1)
+            except Exception as e:
+                st.error(f"Error creating feature importance chart: {e}")
+                # Fallback to text display
+                st.write("Top Feature Importance:")
+                st.dataframe(importance_df.sort_values('Importance', ascending=False).head(10))
+        else:
+            # Fallback to text display
+            st.write("Top Feature Importance:")
+            st.dataframe(importance_df.sort_values('Importance', ascending=False).head(10))
         
         # Display the plot in Streamlit
         st.write("## Model Feature Importance")
         st.write("This chart shows which transaction characteristics are most important for detecting fraud:")
-        st.pyplot(fig)
         
         # Add explanation of top features
         st.write("""
@@ -417,8 +468,22 @@ if os.path.exists('credit_fraud_model.pkl'):
         st.write("## Model Diagnostic Charts")
         st.write("These charts demonstrate the high reliability of our fraud detection model:")
         
-        # Create tabs for different diagnostic charts
-        tab1, tab2, tab3 = st.tabs(["Confusion Matrix", "ROC Curve", "Precision-Recall Curve"])
+        # Create tabs for model evaluation if visualization is available
+        try:
+            tab1, tab2, tab3 = st.tabs(["Confusion Matrix", "ROC Curve", "Precision-Recall Curve"])
+        except Exception as e:
+            st.error(f"Error creating evaluation tabs: {e}")
+            # Fallback to sections
+            st.write("### Confusion Matrix")
+            st.write("### ROC Curve")
+            st.write("### Precision-Recall Curve")
+            # Create dummy tabs for the code below
+            class DummyTab:
+                def __enter__(self):
+                    return self
+                def __exit__(self, exc_type, exc_val, exc_tb):
+                    pass
+            tab1 = tab2 = tab3 = DummyTab()
         
         # Generate sample data for visualization (since we don't have the actual test data here)
         # This simulates the model performance based on the metrics we saw during training
@@ -454,58 +519,57 @@ if os.path.exists('credit_fraud_model.pkl'):
         
         # Tab 1: Confusion Matrix
         with tab1:
-            cm = confusion_matrix(y_true, y_pred)
-            fig1, ax1 = plt.subplots(figsize=(8, 6))
-            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False,
-                      xticklabels=['Legitimate', 'Fraudulent'],
-                      yticklabels=['Legitimate', 'Fraudulent'])
-            plt.ylabel('True Label')
-            plt.xlabel('Predicted Label')
-            plt.title('Confusion Matrix', fontsize=16)
-            st.pyplot(fig1)
-            
-            # Calculate and display metrics
-            accuracy = (cm[0,0] + cm[1,1]) / np.sum(cm)
-            precision = cm[1,1] / (cm[1,1] + cm[0,1]) if (cm[1,1] + cm[0,1]) > 0 else 0
-            recall = cm[1,1] / (cm[1,1] + cm[1,0]) if (cm[1,1] + cm[1,0]) > 0 else 0
-            f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
-            
-            col1, col2, col3, col4 = st.columns(4)
-            col1.metric("Accuracy", f"{accuracy:.2%}")
-            col2.metric("Precision", f"{precision:.2%}")
-            col3.metric("Recall", f"{recall:.2%}")
-            col4.metric("F1 Score", f"{f1:.2%}")
-            
-            st.write("""
-            **Interpretation:**
-            - **High accuracy (99.9%)** shows the model correctly classifies almost all transactions
-            - **High precision** means when the model predicts fraud, it's usually correct
-            - **Good recall** indicates the model catches nearly half of all fraudulent transactions
-            - These metrics are excellent for a highly imbalanced dataset where fraud is rare
-            """)
+            if visualization_available:
+                try:
+                    cm = confusion_matrix(y_true, y_pred)
+                    fig3, ax3 = plt.subplots(figsize=(8, 6))
+                    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax3)
+                    ax3.set_xlabel('Predicted')
+                    ax3.set_ylabel('Actual')
+                    ax3.set_title('Confusion Matrix')
+                    ax3.set_xticklabels(['Not Fraud', 'Fraud'])
+                    ax3.set_yticklabels(['Not Fraud', 'Fraud'])
+                    plt.tight_layout()
+                    st.pyplot(fig3)
+                except Exception as e:
+                    st.error(f"Error creating confusion matrix visualization: {e}")
+                    # Fallback to text display
+                    cm = confusion_matrix(y_true, y_pred)
+                    st.write("Confusion Matrix:")
+                    st.write(f"True Negatives: {cm[0][0]}")
+                    st.write(f"False Positives: {cm[0][1]}")
+                    st.write(f"False Negatives: {cm[1][0]}")
+                    st.write(f"True Positives: {cm[1][1]}")
+            else:
+                # Fallback to text display
+                cm = confusion_matrix(y_true, y_pred)
+                st.write("Confusion Matrix:")
+                st.write(f"True Negatives: {cm[0][0]}")
+                st.write(f"False Positives: {cm[0][1]}")
+                st.write(f"False Negatives: {cm[1][0]}")
+                st.write(f"True Positives: {cm[1][1]}")
         
         # Tab 2: ROC Curve
         with tab2:
-            fpr, tpr, _ = roc_curve(y_true, y_prob)
-            roc_auc = auc(fpr, tpr)
-            
-            fig2, ax2 = plt.subplots(figsize=(8, 6))
-            plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.3f})')
-            plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-            plt.xlim([0.0, 1.0])
-            plt.ylim([0.0, 1.05])
-            plt.xlabel('False Positive Rate')
-            plt.ylabel('True Positive Rate')
-            plt.title('Receiver Operating Characteristic (ROC) Curve', fontsize=16)
-            plt.legend(loc="lower right")
-            st.pyplot(fig2)
-            
-            st.write("""
-            **Interpretation:**
-            - The **ROC curve** shows the tradeoff between catching fraud (true positives) and false alarms
-            - **Area Under Curve (AUC)** of 0.97+ indicates excellent discriminative ability
-            - The curve being close to the top-left corner shows the model can achieve high true positive rates with low false positive rates
-            """)
+            if visualization_available:
+                try:
+                    fpr, tpr, _ = roc_curve(y_true, y_prob)
+                    roc_auc = auc(fpr, tpr)
+                    
+                    fig2, ax2 = plt.subplots(figsize=(8, 6))
+                    ax2.plot(fpr, tpr, label=f'ROC Curve (AUC = {roc_auc:.3f})')
+                    ax2.plot([0, 1], [0, 1], 'k--')
+                    ax2.set_xlabel('False Positive Rate')
+                    ax2.set_ylabel('True Positive Rate')
+                    ax2.set_title('Receiver Operating Characteristic (ROC) Curve')
+                    ax2.legend(loc='lower right')
+                    plt.tight_layout()
+                    st.pyplot(fig2)
+                except Exception as e:
+                    st.error(f"Error creating ROC curve: {e}")
+                    st.write(f"ROC AUC: {auc(roc_curve(y_true, y_prob)[0], roc_curve(y_true, y_prob)[1]):.3f}")
+            else:
+                st.write(f"ROC AUC: {auc(roc_curve(y_true, y_prob)[0], roc_curve(y_true, y_prob)[1]):.3f}")
         
         # Tab 3: Precision-Recall Curve
         with tab3:
@@ -691,18 +755,47 @@ def display_transaction_details():
                     # Check if model file exists
                     model_path = 'credit_fraud_model.pkl'
                     if not os.path.exists(model_path):
-                        st.error(f"Model file {model_path} not found. Please run train_model.py first.")
-                        return
-                        
-                    # Load the trained model
-                    with open(model_path, 'rb') as file:
-                        model = pickle.load(file)
+                        st.error(f"Model file {model_path} not found. Using a simple decision tree classifier instead.")
+                        # Create a simple decision tree for demonstration
+                        try:
+                            from sklearn.tree import DecisionTreeClassifier
+                            model = DecisionTreeClassifier(max_depth=5)
+                            # Simple training on default values
+                            X = np.array([[0, 0, 100, 1000, 900, 500, 600, 0],
+                                         [0, 1, 5000, 10000, 5000, 1000, 6000, 0],
+                                         [1, 2, 200000, 300000, 100000, 5000, 205000, 1]])
+                            y = np.array([0, 0, 1])
+                            model.fit(X, y)
+                        except Exception as e:
+                            st.error(f"Error creating fallback model: {e}")
+                            # Create an even simpler prediction function if sklearn fails
+                            def predict(features):
+                                # Simple rule-based fallback: flag transactions over 100000 or with system flag
+                                amount = features[0][2]
+                                flag = features[0][7]
+                                return np.array([1 if amount > 100000 or flag == 1 else 0])
+                            
+                            class SimpleModel:
+                                def predict(self, features):
+                                    return predict(features)
+                                def predict_proba(self, features):
+                                    pred = predict(features)[0]
+                                    return np.array([[1-pred, pred]]) if pred == 1 else np.array([[pred, 1-pred]])
+                            
+                            model = SimpleModel()
+                    else:
+                        # Load the trained model
+                        with open(model_path, 'rb') as file:
+                            model = pickle.load(file)
+                    
+                    # Model is loaded in the previous block
                     
                     # Prepare the input features for prediction
                     # Check if we need to use the enhanced model with additional features
-                    if os.path.exists('model_features.pkl'):
+                    model_features_path = 'model_features.pkl'
+                    if os.path.exists(model_features_path):
                         try:
-                            with open('model_features.pkl', 'rb') as f:
+                            with open(model_features_path, 'rb') as f:
                                 model_features = pickle.load(f)
                                 
                             # If model expects 17 features, we need to generate the additional ones
